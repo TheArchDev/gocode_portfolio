@@ -594,25 +594,23 @@ function get_inputs_then_fetch()
 
   <canvas style="border-style:solid; border-radius:20px" id="weather_canvas" width="700" height="800"></canvas>
 
-<h2>A Visual Weather App</h2>
+<h2>A Visual Weather App (w/Animated Bar Graphs)</h2>
 <ul>
-<li>Bring over the js and html code from js4</li>
-<li>Note: This program will always default to 5 day forecast!</li>
-<li>This time, when a user clicks "fetch", get_inputs/process will draw on the canvas instead of table</li>
-<li>Default to five days and draw a bar graph, one for each day, with the high and low values</li>
-<li>Once working, uncomment the canvas.addEventListener line, and add a mouse down function to be
-called</li>
-<li>On a mouse down event, convert the temp values from celsius to fahrenheit (and vice versa).</li>
+  <li>Please enter a city into the search box below and click 'Fetch'</li>
+  <li>This will return a 5-day forecast using an Open Weather API</li>
+  <li>Note: This program defaults to 5 day forecast!</li>
+  <li>Once data has loaded, click anywhere on the canvas to convert between Celsius and Fahrenheit!</li>
+  <li>[There are some bugs to be resolved when multiple temp-unit changes are made, and when multiple cities are fetched on the same page reload. (To avoid these, please, please reload page before fetching a new city, and wait until bars are fully loaded before clicking for temp conversion)]
 
 </ul>
 
 <input id="city" placeholder="Enter a city">
 <button type="button" onclick="get_inputs_then_fetch()">Fetch</button>
 
-<h1>Results</h1>
+<!-- <h1>Results</h1>
 
 <div id="results_div"></div>
-
+ -->
 
 </body>
 </html>
