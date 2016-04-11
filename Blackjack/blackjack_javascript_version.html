@@ -1,0 +1,232 @@
+<html>
+  <head>
+
+<script>
+
+
+function clear_screen(context)
+{
+    context.clearRect(0, 0, 1000, 600);
+    context.rect(0,0,1000,600);
+    context.fillStyle="#3c0";;
+    context.fill();
+
+}
+
+function draw_text(context,text,x,y) 
+{
+    context.font = 'normal 40pt Calibri';
+
+    context.fillStyle = "black";
+    context.fillText(text, x, y);
+
+}
+
+function draw_rect(context,x,y,width,height,color)
+{
+    context.fillStyle = color;
+    context.fillRect(x, y, width, height);
+
+}
+
+function draw_button(context,text,x,y,width,height)
+{
+    draw_rect(context,x,y,width,height,"grey");
+    draw_text(context,text,x + 20,y +50);
+}
+
+function tick(context,state)
+{
+    var i = 0;
+
+    clear_screen(context);
+
+    draw_button(context,"Deal",20,50,150,60);
+
+    draw_text(context,"Dealer",20,225);
+    
+    //draw dealer cards
+
+    if (state.dealer.length)
+	context.drawImage(state.images['back'],20,250);
+
+    for (i=1;i<state.dealer.length;i++) {
+	context.drawImage(state.images[state.dealer[i]],20 + (i * 20),250);
+    }
+
+    draw_text(context,"Player",20,425);
+
+    for (i=0;i<state.player.length;i++) {
+	context.drawImage(state.images[state.player[i]],20 + (i * 20),450);
+    }
+
+    setTimeout(function () { tick(context,state);}, 1000/30);
+}
+
+
+function shuffle(array) {
+  var currentIndex = array.length, temporaryValue, randomIndex ;
+
+  // While there remain elements to shuffle...
+  while (0 !== currentIndex) {
+
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+
+    // And swap it with the current element.
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+
+  return array;
+}
+
+function coord_in(x,y,btn)
+{
+    if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) 
+	return true;
+	
+    return false;
+}
+
+
+function num_to_card(card_num)
+{
+    if (card_num <= 10) return card_num;
+
+    return ['J','Q','K','A'][card_num - 11];
+}
+
+function num_to_suit(card_num)
+{
+    return ['D','C','S','H'][card_num % 4];
+}
+
+function build_deck()
+{
+    
+    var suits = ['C','S','H','D'];
+    var ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
+
+    var deck = [];
+    
+    var r = 0;
+    var s = 0;
+
+    for (r=0;r<ranks.length;r++) {
+	for (s=0;s<suits.length;s++) {
+	    deck.push(ranks[r]+suits[s]);
+	}
+    }
+
+    return deck;
+    
+}
+
+
+var stateObject = {images:{},
+		   deck:[],
+		   dealer:[],
+		   player:[],
+		   deal_button: {x:20,y:50,w:150,h:60},
+		   load_images: function ()
+		   {
+		       var i = 0;
+		       var card_number = 1;
+		       var file_name = "";
+		       var imageObj = null;
+		       var state = this;
+
+		       var load = function(file,img) {
+			   return function() {
+			       state.images[file] = img;}};
+
+		       for (i=52;i>0;i--)
+		       {
+			   if (i % 4 == 0) card_number++;
+			   file_name = "classic-cards/"+i+".png";
+			   card_name = num_to_card(card_number)+num_to_suit(i);
+			   imageObj = new Image();
+			   imageObj.onload = load(card_name,imageObj);
+			   imageObj.src = file_name;
+
+		       }
+
+		       //load a back image
+		       imageObj = new Image();
+		       file_name =  "classic-cards/b1fv.png";
+		       imageObj.onload = load('back',imageObj);
+		       imageObj.src = file_name;
+		       
+		   },
+
+		   button_clicked: function (x,y) {
+		       console.log("Button clicked");
+
+		       if (coord_in(x,y,this.deal_button))
+			   this.deal_clicked();
+		       
+		   },
+		   mouse_down: function (canvas,event) {
+		       console.log("Mouse Down");
+    
+		       var rect = canvas.getBoundingClientRect();
+
+		       var relativexy = {
+			   x: event.clientX - rect.left,
+			   y: event.clientY - rect.top
+		       };
+
+		       this.button_clicked(relativexy.x,relativexy.y);
+		   },
+		   deal_clicked: function () {
+		       console.log("Deal Clicked");
+	               this.deck = build_deck();
+		       shuffle(this.deck);
+		       var i = 0;
+
+		       this.dealer = [];
+		       this.player = [];
+
+		       for (i=0;i<2;i++) {
+			   this.dealer.push(this.deck.pop());
+			   this.player.push(this.deck.pop());
+		       }
+
+		   },
+
+};
+	     
+
+
+function init()
+{
+
+    //http://www.html5canvastutorials.com/
+    var canvas = document.getElementById('blackjack_canvas');
+    var context = canvas.getContext('2d');
+
+    var state = Object.create(stateObject);
+
+    state.load_images();
+    
+    canvas.addEventListener("mousedown", 
+			    function (event){
+				state.mouse_down(canvas,event);},
+			    false);
+
+    setTimeout(function () { tick(context,state);}, 1000/30);
+}
+
+
+</script>
+
+
+<body onload="init();">
+
+  <canvas id="blackjack_canvas" width="1000" height="600"></canvas>
+
+</body>
+</html>
