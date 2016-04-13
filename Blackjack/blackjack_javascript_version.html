@@ -1,0 +1,386 @@
+<html>
+  <head>
+
+<script>
+
+	function clear_screen(context)
+	{
+		context.clearRect(0, 0, 1000, 600);
+		context.rect(0,0,1000,600);
+		context.fillStyle="#3c0";;
+		context.fill();
+
+	}
+
+	function draw_text(context,text,x,y)
+	{
+		context.font = 'normal 40pt Calibri';
+
+		context.fillStyle = "black";
+		context.fillText(text, x, y);
+
+	}
+
+	function draw_rect(context,x,y,width,height,color)
+	{
+		context.fillStyle = color;
+		context.fillRect(x, y, width, height);
+
+	}
+
+	function draw_button(context,text,x,y,width,height)
+	{
+		draw_rect(context,x,y,width,height,"grey");
+		draw_text(context,text,x + 20,y +50);
+	}
+
+	function tick(context,state)
+	{
+		var i = 0;
+
+		clear_screen(context);
+
+		draw_button(context,"Deal",state.deal_button.x,state.deal_button.y,state.deal_button.w,state.deal_button.h);
+
+		draw_button(context,"Hit",state.hit_button.x,state.hit_button.y,state.hit_button.w,state.hit_button.h);
+
+		draw_button(context,"Stay",state.stay_button.x,state.stay_button.y,state.stay_button.w,state.stay_button.h);
+	   //stay_button: {x:380,y:50,w:150,h:60},
+
+	   draw_text(context,"Score",560,100);
+
+		//draw dealer cards
+
+		draw_text(context,"Dealer",20,225);
+
+		if (state.dealer.length && state.game_active == true)
+		context.drawImage(state.images['back'],20,250);
+		else if (state.dealer.length && state.game_active == false)
+		{
+			context.drawImage(state.images[state.dealer[0]],20,250);
+			//Show the points for the dealer, but only when the game is over (ie when )
+			draw_text(context,calculate_points(state.dealer),560,225);
+
+		}
+		for (i=1;i<state.dealer.length;i++) {
+		context.drawImage(state.images[state.dealer[i]],20 + (i * 20),250);
+		}
+
+		// draw player cards
+
+		draw_text(context,"Player",20,425);
+
+		for (i=0;i<state.player.length;i++) {
+		context.drawImage(state.images[state.player[i]],20 + (i * 20),450);
+		}
+
+		draw_text(context,calculate_points(state.player),560,425);
+
+		//console.log("game active", state.game_active);
+		//console.log("dealer_wins", state.dealer_wins);
+		if (state.game_active == false && state.dealer_wins == false)
+		{
+			// player wins
+			draw_text(context,"WINNER",560,475);
+		}
+		else if (state.game_active == false && state.dealer_wins == true)
+		{
+			// dealer wins
+			draw_text(context,"WINNER",560,275);
+		}
+
+		setTimeout(function () { tick(context,state);}, 1000/30);
+	}
+
+
+	function shuffle(array) {
+	  var currentIndex = array.length, temporaryValue, randomIndex ;
+
+	  // While there remain elements to shuffle...
+	  while (0 !== currentIndex) {
+
+		// Pick a remaining element...
+		randomIndex = Math.floor(Math.random() * currentIndex);
+		currentIndex -= 1;
+
+		// And swap it with the current element.
+		temporaryValue = array[currentIndex];
+		array[currentIndex] = array[randomIndex];
+		array[randomIndex] = temporaryValue;
+	  }
+
+	  return array;
+	}
+
+	function coord_in(x,y,btn)
+	{
+		if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) 
+		return true;
+		
+		return false;
+	}
+
+
+	function num_to_card(card_num)
+	{
+		if (card_num <= 10) return card_num;
+
+		return ['J','Q','K','A'][card_num - 11];
+	}
+
+	function num_to_suit(card_num)
+	{
+		return ['D','C','S','H'][card_num % 4];
+	}
+
+	function build_deck()
+	{
+		
+		var suits = ['C','S','H','D'];
+		var ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
+
+		var deck = [];
+		
+		var r = 0;
+		var s = 0;
+
+		for (r=0;r<ranks.length;r++) {
+		for (s=0;s<suits.length;s++) {
+			deck.push(ranks[r]+suits[s]);
+		}
+		}
+
+		return deck;
+		
+	}
+
+	function calculate_points(hand_array)
+	{
+		var i = 0;
+		var hand_total = 0;
+		for (i = 0; i < hand_array.length; i++)
+		{
+			var card_points = null;
+			// can change to one action and loose the if/else statement by just slicing all but last element. ie dropping the suit letter
+			if (hand_array[i].length == 3)
+			{
+				card_points = pip_to_points(hand_array[i].slice(0,2));
+			}
+			else
+			{
+				card_points = pip_to_points(hand_array[i][0]);
+			}
+			hand_total += parseInt(card_points);
+		}
+		//console.log("hand_total", hand_total);
+		return hand_total;
+	}
+
+	function pip_to_points(pip)
+	{
+		var points_table = {2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:10,Q:10,K:10,A:10};
+		return points_table[pip];
+	}
+
+	function dealer_turn(state)
+	{
+		var dealer_hand_value = calculate_points(state.dealer);
+		console.log("Dealer's hand:", state.dealer, "totals", dealer_hand_value, "points");
+		if (dealer_hand_value <= 16){
+			state.dealer.push(state.deck.pop());
+			console.log("Dealer hit");
+			return dealer_turn(state);
+		};
+		if (dealer_hand_value > 21){
+			console.log("Dealer is bust");
+			state.dealer_bust = true;
+			return calculate_winner(state);
+		};
+		console.log("Dealer stayed");
+		// look into showing all dealer cards at the end of his play/turn.
+		// also, have a current points total on the RHS for the dealer and the player
+
+		calculate_winner(state);
+	}
+
+	function calculate_winner(state)
+	{
+		state.game_active = false;
+		var player_hand_value = calculate_points(state.player);
+		console.log("Player's score:", player_hand_value);
+		var dealer_hand_value = calculate_points(state.dealer);
+		console.log("Dealer's score:", dealer_hand_value);
+		if (player_hand_value > dealer_hand_value || state.dealer_bust == true)
+		{
+			console.log("Player wins");
+			state.dealer_wins = false;
+		}
+		else
+		{
+			console.log("Dealer wins");
+			state.dealer_wins = true;
+		}
+	}
+
+	var stateObject = {images:{},
+			   deck:[],
+			   dealer:[],
+			   player:[],
+			   player_bust: false,
+			   dealer_bust: false,
+			   game_active: false,
+			   dealer_wins: null,
+			   // could add an attribute for who is the active player, when doing multiplayers
+			   deal_button: {x:20,y:50,w:150,h:60},
+			   hit_button: {x:200,y:50,w:150,h:60},
+			   stay_button: {x:380,y:50,w:150,h:60},
+			   load_images: function ()
+			   {
+				   var i = 0;
+				   var card_number = 1;
+				   var file_name = "";
+				   var imageObj = null;
+				   // do we add this in such that when load_images function is called, we're still able to access the stateObject instance...?
+				   var state = this;
+
+				   var load = function(file,img) {
+				   return function() {
+					   state.images[file] = img;}};
+
+				   for (i=52;i>0;i--)
+				   {
+				   if (i % 4 == 0) card_number++;
+				   file_name = "classic-cards/"+i+".png";
+				   card_name = num_to_card(card_number)+num_to_suit(i);
+				   imageObj = new Image();
+				   // what is onload exactly? an in-built method?? Related to that, is Image() built-in object type?
+				   imageObj.onload = load(card_name,imageObj);
+				   imageObj.src = file_name;
+
+				   }
+
+				   //load a back image
+				   imageObj = new Image();
+				   file_name =  "classic-cards/b1fv.png";
+				   imageObj.onload = load('back',imageObj);
+				   imageObj.src = file_name;
+				   
+			   },
+
+			   button_clicked: function (x,y) {
+				   //console.log("Button clicked");
+
+				   if (coord_in(x,y,this.deal_button))
+				   this.deal_clicked();
+					if (coord_in(x,y,this.hit_button))
+					this.hit_clicked();
+					if (coord_in(x,y,this.stay_button))
+					this.stay_clicked();			   
+			   },
+			   mouse_down: function (canvas,event) {
+				   //console.log("Mouse Down");
+		
+				   var rect = canvas.getBoundingClientRect();
+
+				   var relativexy = {
+				   x: event.clientX - rect.left,
+				   y: event.clientY - rect.top
+				   };
+
+				   this.button_clicked(relativexy.x,relativexy.y);
+			   },
+			   deal_clicked: function () {
+				   //console.log("Deal Clicked");
+					this.deck = build_deck();
+				   shuffle(this.deck);
+				   var i = 0;
+
+				   this.dealer = [];
+				   this.player = [];
+
+				   // Allowing the Hit and Stay buttons to be clicked now that the cards have been dealt.
+				   this.game_active = true;
+				   // In the case that another game has been started, to ensure that neither the dealer or player or still considered as bust.
+				   this.player_bust = false;
+				   this.dealer_bust = false;
+				   this.dealer_wins = null;
+
+				   for (i=0;i<2;i++) {
+				   this.dealer.push(this.deck.pop());
+				   this.player.push(this.deck.pop());
+
+
+				   }
+
+			   },
+
+			   hit_clicked: function () {
+				   //console.log("Hit clicked");
+				   if (this.game_active == false || this.player_bust == true)
+				   {
+				   	console.log("Hit button unavailable.");
+				   	//alert("Please deal first.");
+				   	return;
+				   };
+
+				   this.player.push(this.deck.pop());
+				   console.log(this.player);
+				   var player_hand_value = calculate_points(this.player);
+				   console.log("Player's hand", this.player, "totals", player_hand_value);
+
+				   if (player_hand_value > 21)
+				   {
+				   	console.log("Player is bust");
+				   	console.log("Dealer wins");
+				   	this.player_bust = true;
+				   	this.dealer_wins = true;
+				   	this.game_active = false;
+				   }
+
+			   },
+
+			   stay_clicked: function () {
+				   //console.log("Stay clicked");
+				   if (this.game_active == false || this.player_bust == true)
+				   {
+				   	console.log("Stay button unavailable.");
+				   	//alert("Please deal first.");
+				   	return;
+				   };
+				   var player_hand_value = calculate_points(this.player);
+				   //console.log("player_hand_value", player_hand_value);
+				   dealer_turn(this);
+			   },
+	};
+			 
+
+
+	function init()
+	{
+
+		//http://www.html5canvastutorials.com/
+		var canvas = document.getElementById('blackjack_canvas');
+		var context = canvas.getContext('2d');
+
+		var state = Object.create(stateObject);
+
+		state.load_images();
+		
+		canvas.addEventListener("mousedown", 
+					function (event){
+					state.mouse_down(canvas,event);},
+					false);
+
+		setTimeout(function () { tick(context,state);}, 1000/30);
+	}
+
+
+</script>
+
+
+<body onload="init();">
+
+  <canvas id="blackjack_canvas" width="1000" height="600"></canvas>
+
+</body>
+</html>

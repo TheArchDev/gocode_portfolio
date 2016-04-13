@@ -1,0 +1,616 @@
+<html>
+  <head>
+
+<!--
+<script type="text/javascript" src="jquery-2.1.4.min.js"></script>
+-->
+<script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+<script>
+
+function draw_text(context,text,x,y)
+{
+  context.font = 'normal bold 12pt Calibri';
+
+  context.fillStyle = "black";
+  context.fillText(text, x, y);
+
+}
+
+function draw_title(context,text,x,y)
+{
+  context.font = 'normal 25pt Calibri';
+
+  context.fillStyle = "black";
+  context.fillText(text, x, y);
+
+}
+
+function draw_rect(context,x,y,width,height)
+{
+    context.fillStyle = "#3c0";
+    context.fillRect(x, y, width, height);
+
+}
+
+function draw_max(context,x,y,width,height)
+{
+    var grd = context.createLinearGradient(0,0,0,$('#weather_canvas')[0].height);
+    grd.addColorStop(0,"red");
+    grd.addColorStop(0.6,"orange");
+    grd.addColorStop(1,"yellow");
+
+    context.fillStyle = grd;
+    context.fillRect(x, y, width, height);
+}
+
+function draw_min(context,x,y,width,height)
+{
+    var grd = context.createLinearGradient(0,0,0,$('#weather_canvas')[0].height);
+    grd.addColorStop(0,"lime");
+    grd.addColorStop(0.6,"blue");
+    grd.addColorStop(1,"aqua");
+    context.fillStyle = grd;
+    context.fillRect(x, y, width, height);
+
+}
+
+function clear_canvas(context)
+{
+    context.fillStyle = "white";
+
+    context.fillRect(0, 0, $('#weather_canvas')[0].width, $('#weather_canvas')[0].height);
+
+}
+
+
+function init()
+{
+
+    //http://www.html5canvastutorials.com/
+    console.log("Init function");
+
+    
+
+}
+
+//--------------------------------------------------------------------------------------------------------------
+
+// var forecast_url_base = "http://api.openweathermap.org/data/2.5/forecast/daily?mode=json&units=metric&appid=44db6a862fba0b067b1930da0d769e98";
+
+var forecast_url_base = "http://api.openweathermap.org/data/2.5/forecast/daily?mode=json&units=metric&appid=023cf02de24c6944ef84174296a54d79";
+
+
+function get_weather_data(url,callback_function)
+{
+    //do not change this function
+    $.ajax({
+  url: url,
+  success: callback_function,
+        error: function () { alert("Error Fetching Data")}});
+}
+
+function process_weather_data(data)
+{
+    //this function will be called when jquery has finished getting the weather data
+    //Using jquery to add an html table to the dom with the weather information
+    console.log("Process Weather Data" );
+    console.log(data);
+
+    var max_temps = [];
+    var min_temps = [];
+    var descriptions = [];
+    var city = data.city.name;
+    for (x in data.list)
+    {
+        max_temps.push(data.list[x].temp.max);
+        min_temps.push(data.list[x].temp.min);
+        descriptions.push(data.list[x].weather["0"].description);
+    }
+
+    var canvas = document.getElementById('weather_canvas');
+
+    var context = canvas.getContext('2d');
+    var temp_unit = "Celsius";
+
+    function paint_canvas(context)
+    {
+      clear_canvas(context);
+ 
+      var text_base = 550;
+      var start_x = 50;
+      var start_y = 550;
+      var bar_width = 40;
+      var scale = 5;
+
+      draw_title(context,"Highs and Lows (" + temp_unit + "): " + city,start_x+bar_width,40);
+      draw_title(context,"Click to convert between Celsius & Fahrenheit!", start_x, $('#weather_canvas')[0].height-25);
+      context.moveTo(start_x,start_y);
+      context.lineTo(start_x+(bar_width*15),start_y);
+      //context.stroke();
+      context.moveTo(start_x,$('#weather_canvas')[0].height-60);
+      context.lineTo(start_x,25);
+      context.stroke();
+      var bar_start_points = [0,(3*bar_width),(6*bar_width),(9*bar_width),(12*bar_width)];
+
+
+
+      function first_bar(callback)
+      {
+        var day_max_peak = max_temps[0] * scale;
+        var day_max = 0;
+
+        var my_id_max = setInterval(frame_max,1);
+        function frame_max()
+        {
+          console.log("day_max", day_max);
+          if (Math.abs(day_max) >= Math.abs(day_max_peak))
+          {
+            clearInterval(my_id_max);
+          }
+          else
+          {
+            draw_max(context, start_x, start_y-day_max, bar_width, day_max);
+            if (day_max_peak > 0)
+            {
+              day_max += 1;
+            }
+            else if (day_max_peak < 0)
+            {
+              day_max += -1;
+            }
+          }
+        }
+
+        var day_min_peak = min_temps[0] * scale;
+        var day_min = 0;
+
+        var my_id_min = setInterval(frame_min,11);
+        function frame_min()
+        {
+          console.log("day_min", day_min);
+          if (Math.abs(day_min) >= Math.abs(day_min_peak))
+          {
+            callback();
+            clearInterval(my_id_min);
+          }
+          else
+          {
+            draw_min(context, start_x+bar_width, start_y-day_min, bar_width, day_min);
+            if (day_min_peak > 0)
+            {
+              day_min += 1;
+            }
+            else if (day_min_peak < 0)
+            {
+              day_min += -1;
+            }
+          }
+        }
+        
+        if (day_max_peak > 0 )
+        {
+          draw_text(context,max_temps[0].toFixed(1),start_x+1,start_y-day_max_peak-15);
+        }
+        else if (day_max_peak < 0)
+        {
+          draw_text(context,max_temps[0].toFixed(1),start_x+1,start_y-day_max_peak+15);
+        }
+        if (day_min_peak > 0)
+        {
+          draw_text(context,min_temps[0].toFixed(1),start_x+2+bar_width,start_y-day_min_peak-15);
+        }
+        else if (day_min_peak < 0)
+        {
+          draw_text(context,min_temps[0].toFixed(1),start_x+2+bar_width,start_y-day_min_peak+15);
+        }
+
+
+      }
+
+
+      function callback()
+      {
+        console.log("All 5 days printed");
+      }
+
+      function second_bar(callback){
+        var day_max_peak = max_temps[1] * scale;
+        var day_max = 0;
+
+        var my_id_max = setInterval(frame_max,1);
+        function frame_max()
+        {
+          console.log("day_max", day_max);
+          if (Math.abs(day_max) >= Math.abs(day_max_peak))
+          {
+            clearInterval(my_id_max);
+          }
+          else
+          {
+            draw_max(context, start_x+bar_start_points[1], start_y-day_max, bar_width, day_max);
+            if (day_max_peak > 0)
+            {
+              day_max += 1;
+            }
+            else if (day_max_peak < 0)
+            {
+              day_max += -1;
+            }
+          }
+        }
+
+        var day_min_peak = min_temps[1] * scale;
+        var day_min = 0;
+
+        var my_id_min = setInterval(frame_min,11);
+        function frame_min()
+        {
+          console.log("day_min", day_min);
+          if (Math.abs(day_min) >= Math.abs(day_min_peak))
+          {
+            callback();
+            clearInterval(my_id_min);
+          }
+          else
+          {
+            draw_min(context, start_x+bar_width+bar_start_points[1], start_y-day_min, bar_width, day_min);
+            if (day_min_peak > 0)
+            {
+              day_min += 1;
+            }
+            else if (day_min_peak < 0)
+            {
+              day_min += -1;
+            }
+          }
+        }
+
+        
+        if (day_max_peak > 0 )
+        {
+          draw_text(context,max_temps[1].toFixed(1),start_x+1+bar_start_points[1],start_y-day_max_peak-15);
+        }
+        else if (day_max_peak < 0)
+        {
+          draw_text(context,max_temps[1].toFixed(1),start_x+1+bar_start_points[1],start_y-day_max_peak+15);
+        }
+        if (day_min_peak > 0)
+        {
+          draw_text(context,min_temps[1].toFixed(1),start_x+2+bar_width+bar_start_points[1],start_y-day_min_peak-15);
+        }
+        else if (day_min_peak < 0)
+        {
+          draw_text(context,min_temps[1].toFixed(1),start_x+2+bar_width+bar_start_points[1],start_y-day_min_peak+15);
+        }
+        
+
+      }
+
+      function third_bar(callback){
+        var day_max_peak = max_temps[2] * scale;
+        var day_max = 0;
+
+        var my_id_max = setInterval(frame_max,1);
+        function frame_max()
+        {
+          console.log("day_max", day_max);
+          if (Math.abs(day_max) >= Math.abs(day_max_peak))
+          {
+            clearInterval(my_id_max);
+          }
+          else
+          {
+            draw_max(context, start_x+bar_start_points[2], start_y-day_max, bar_width, day_max);
+            if (day_max_peak > 0)
+            {
+              day_max += 1;
+            }
+            else if (day_max_peak < 0)
+            {
+              day_max += -1;
+            }
+          }
+        }
+
+        var day_min_peak = min_temps[2] * scale;
+        var day_min = 0;
+
+        var my_id_min = setInterval(frame_min,11);
+        function frame_min()
+        {
+          console.log("day_min", day_min);
+          if (Math.abs(day_min) >= Math.abs(day_min_peak))
+          {
+            callback()
+            clearInterval(my_id_min);
+          }
+          else
+          {
+            draw_min(context, start_x+bar_width+bar_start_points[2], start_y-day_min, bar_width, day_min);
+            if (day_min_peak > 0)
+            {
+              day_min += 1;
+            }
+            else if (day_min_peak < 0)
+            {
+              day_min += -1;
+            }
+          }
+        }
+
+        
+        if (day_max_peak > 0 )
+        {
+          draw_text(context,max_temps[2].toFixed(1),start_x+1+bar_start_points[2],start_y-day_max_peak-15);
+        }
+        else if (day_max_peak < 0)
+        {
+          draw_text(context,max_temps[2].toFixed(1),start_x+1+bar_start_points[2],start_y-day_max_peak+15);
+        }
+        if (day_min_peak > 0)
+        {
+          draw_text(context,min_temps[2].toFixed(1),start_x+2+bar_width+bar_start_points[2],start_y-day_min_peak-15);
+        }
+        else if (day_min_peak < 0)
+        {
+          draw_text(context,min_temps[2].toFixed(1),start_x+2+bar_width+bar_start_points[2],start_y-day_min_peak+15);
+        }
+        
+
+      }
+
+      function fourth_bar(callback){
+        var day_max_peak = max_temps[3] * scale;
+        var day_max = 0;
+
+        var my_id_max = setInterval(frame_max,1);
+        function frame_max()
+        {
+          console.log("day_max", day_max);
+          if (Math.abs(day_max) >= Math.abs(day_max_peak))
+          {
+            clearInterval(my_id_max);
+          }
+          else
+          {
+            draw_max(context, start_x+bar_start_points[3], start_y-day_max, bar_width, day_max);
+            if (day_max_peak > 0)
+            {
+              day_max += 1;
+            }
+            else if (day_max_peak < 0)
+            {
+              day_max += -1;
+            }
+          }
+        }
+
+        var day_min_peak = min_temps[3] * scale;
+        var day_min = 0;
+
+        var my_id_min = setInterval(frame_min,11);
+        function frame_min()
+        {
+          console.log("day_min", day_min);
+          if (Math.abs(day_min) >= Math.abs(day_min_peak))
+          {
+            callback();
+            clearInterval(my_id_min);
+          }
+          else
+          {
+            draw_min(context, start_x+bar_width+bar_start_points[3], start_y-day_min, bar_width, day_min);
+            if (day_min_peak > 0)
+            {
+              day_min += 1;
+            }
+            else if (day_min_peak < 0)
+            {
+              day_min += -1;
+            }
+          }
+        }
+
+        
+        if (day_max_peak > 0 )
+        {
+          draw_text(context,max_temps[3].toFixed(1),start_x+1+bar_start_points[3],start_y-day_max_peak-15);
+        }
+        else if (day_max_peak < 0)
+        {
+          draw_text(context,max_temps[3].toFixed(1),start_x+1+bar_start_points[3],start_y-day_max_peak+15);
+        }
+        if (day_min_peak > 0)
+        {
+          draw_text(context,min_temps[3].toFixed(1),start_x+2+bar_width+bar_start_points[3],start_y-day_min_peak-15);
+        }
+        else if (day_min_peak < 0)
+        {
+          draw_text(context,min_temps[3].toFixed(1),start_x+2+bar_width+bar_start_points[3],start_y-day_min_peak+15);
+        }
+        
+
+      }
+
+      function fifth_bar(callback){
+        var day_max_peak = max_temps[4] * scale;
+        var day_max = 0;
+
+        var my_id_max = setInterval(frame_max,1);
+        function frame_max()
+        {
+          console.log("day_max", day_max);
+          if (Math.abs(day_max) >= Math.abs(day_max_peak))
+          {
+            clearInterval(my_id_max);
+          }
+          else
+          {
+            draw_max(context, start_x+bar_start_points[4], start_y-day_max, bar_width, day_max);
+            if (day_max_peak > 0)
+            {
+              day_max += 1;
+            }
+            else if (day_max_peak < 0)
+            {
+              day_max += -1;
+            }
+          }
+        }
+
+        var day_min_peak = min_temps[3] * scale;
+        var day_min = 0;
+
+        var my_id_min = setInterval(frame_min,11);
+        function frame_min()
+        {
+          console.log("day_min", day_min);
+          if (Math.abs(day_min) >= Math.abs(day_min_peak))
+          {
+            callback();
+            clearInterval(my_id_min);
+          }
+          else
+          {
+            draw_min(context, start_x+bar_width+bar_start_points[4], start_y-day_min, bar_width, day_min);
+            if (day_min_peak > 0)
+            {
+              day_min += 1;
+            }
+            else if (day_min_peak < 0)
+            {
+              day_min += -1;
+            }
+          }
+        }
+
+        
+        if (day_max_peak > 0 )
+        {
+          draw_text(context,max_temps[4].toFixed(1),start_x+1+bar_start_points[4],start_y-day_max_peak-15);
+        }
+        else if (day_max_peak < 0)
+        {
+          draw_text(context,max_temps[4].toFixed(1),start_x+1+bar_start_points[4],start_y-day_max_peak+15);
+        }
+        if (day_min_peak > 0)
+        {
+          draw_text(context,min_temps[4].toFixed(1),start_x+2+bar_width+bar_start_points[4],start_y-day_min_peak-15);
+        }
+        else if (day_min_peak < 0)
+        {
+          draw_text(context,min_temps[4].toFixed(1),start_x+2+bar_width+bar_start_points[4],start_y-day_min_peak+15);
+        }
+        
+
+      }
+
+
+      first_bar(second_bar(third_bar(fourth_bar(fifth_bar(callback)))));
+
+
+
+
+
+    };
+
+    paint_canvas(context);
+
+    function c_to_f(currentValue,currentIndex,array)
+    {
+      array[currentIndex] = (currentValue * 1.8) + 32;
+      temp_unit = "Fahrenheit";
+    };
+
+    function f_to_c(currentValue,currentIndex,array)
+    {
+      array[currentIndex] = (currentValue - 32)/1.8;
+      temp_unit = "Celsius";
+    };
+
+    //<add a function to be called on click>
+    canvas.addEventListener("mousedown", function()
+    {
+      if (temp_unit == "Celsius")
+      {
+        max_temps.forEach(c_to_f);
+        min_temps.forEach(c_to_f);
+        paint_canvas(context);
+      }
+      else if (temp_unit == "Fahrenheit")
+      {
+        max_temps.forEach(f_to_c);
+        min_temps.forEach(f_to_c);
+        paint_canvas(context);
+      }
+
+    },
+          false);
+
+
+
+
+}
+
+function get_inputs_then_fetch()
+{
+    //Using jquery get the city and day inputs from the user.
+    //build a proper forecast url 
+
+    //Javascript version of get the 2x user inputs
+    /*
+    var city = document.getElementById("city").value;
+    console.log(city);
+    var days = document.getElementById("days").value;
+    console.log(days);
+    */
+
+    console.log("Check inputs and fetch some data");
+    var city = $('#city')[0].value;
+    console.log(city);
+    var days = 5;
+    console.log(days);
+
+    if (city.length == 0)
+    {
+        alert("Please enter a city");
+    }
+    else
+    {
+        console.log("Data is fine");
+        var forecast_url_test = forecast_url_base + "&q=" + city + "&cnt=" + days;
+        console.log(forecast_url_test);
+        //you don't need to change this line
+        get_weather_data(forecast_url_test,process_weather_data);
+    }
+}
+
+</script>
+
+
+
+
+<body onload="init();">
+
+  <canvas style="border-style:solid; border-radius:20px" id="weather_canvas" width="700" height="800"></canvas>
+
+<h2>A Visual Weather App (w/Animated Bar Graphs)</h2>
+<ul>
+  <li>Please enter a city into the search box below and click 'Fetch'</li>
+  <li>This will return a 5-day forecast using an Open Weather API</li>
+  <li>Note: This program defaults to 5 day forecast!</li>
+  <li>Once data has loaded, click anywhere on the canvas to convert between Celsius and Fahrenheit!</li>
+  <li>[There are some bugs to be resolved when multiple temp-unit changes are made, and when multiple cities are fetched on the same page reload. (To avoid these, please, please reload page before fetching a new city, and wait until bars are fully loaded before clicking for temp conversion)]
+
+</ul>
+
+<input id="city" placeholder="Enter a city">
+<button type="button" onclick="get_inputs_then_fetch()">Fetch</button>
+
+<!-- <h1>Results</h1>
+
+<div id="results_div"></div>
+ -->
+
+</body>
+</html>
